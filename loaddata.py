@@ -2,10 +2,10 @@ import os
 import gdown
 import zipfile
 
-# Dataset: https://drive.google.com/file/d/1Rlg4L4ieMkHihTXNuABoFyh6lD5wLCl3/view?usp=drive_link
+# Dataset: https://drive.google.com/file/d/144U358HTbFS0z4GoO1rmVTdE0D2SoPU5/view?usp=drive_link
 
 # Unduh ZIP dari Google Drive
-file_id = '1Rlg4L4ieMkHihTXNuABoFyh6lD5wLCl3'  # Ganti dengan ID ZIP dataset
+file_id = '144U358HTbFS0z4GoO1rmVTdE0D2SoPU5'  # Ganti dengan ID ZIP dataset
 zip_name = 'pan_dataset.zip'
 zip_url = f'https://drive.google.com/uc?id={file_id}'
 
