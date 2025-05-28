@@ -1,10 +1,12 @@
 import os
-import re
 import nltk
+import re
 import ssl
+import string
+
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
-from nltk.stem import PorterStemmer
+from nltk.stem import PorterStemmer, WordNetLemmatizer
 
 # Setup NLTK Auto-Installer
 def setup_nltk():
@@ -26,7 +28,9 @@ def setup_nltk():
         # Download required resources
         resources = {
             'tokenizers/punkt': 'punkt',
-            'corpora/stopwords': 'stopwords'
+            'corpora/stopwords': 'stopwords',
+            'corpora/wordnet': 'wordnet',
+            'tokenizers/punkt_tab': 'punkt_tab'
         }
         
         for path, package in resources.items():
@@ -40,36 +44,62 @@ def setup_nltk():
         print(f"NLTK setup error: {e}")
         exit(1)
 
-# Text Preprocessing
+# Initialize stemmer and lemmatizer
+stemmer = PorterStemmer()
+lemmatizer = WordNetLemmatizer()
+
+# Text Preprocessing functions
+def text_lowercase(text):
+    return text.lower()
+
+def remove_numbers(text):
+    result = re.sub(r'\d+', '', text)
+    return result
+
+def convert_number(text):
+    return re.sub(r'\d+', '', text)
+
+def remove_punctuation(text):
+    translator = str.maketrans('', '', string.punctuation)
+    return text.translate(translator)
+
+def remove_whitespace(text):
+    return " ".join(text.split())
+
+def remove_stopwords(text):
+    stop_words = set(stopwords.words("english"))
+    word_tokens = word_tokenize(text)
+    filtered_text = [word for word in word_tokens if word not in stop_words]
+    return ' '.join(filtered_text)
+
+def stem_words(text):
+    word_tokens = word_tokenize(text)
+    stems = [stemmer.stem(word) for word in word_tokens]
+    return ' '.join(stems)
+
+def lemmatize_word(text):
+    word_tokens = word_tokenize(text)
+    lemmas = [lemmatizer.lemmatize(word, pos='v') for word in word_tokens]
+    return ' '.join(lemmas)
+
+# Main Preprocessing Function
 def preprocess_text(text):
-    """Fungsi preprocessing utama"""
-    # Case folding
-    text = text.lower()
-    
-    # Remove special chars/numbers
-    text = re.sub(r'[^a-zA-Z\s]', '', text)
-    
-    # Tokenization with fallback
+    """Fungsi preprocessing utama dengan dictionary-friendly output"""
     try:
-        tokens = word_tokenize(text)
-    except:
-        tokens = text.split()  # Basic fallback
-    
-    # Stopword removal
-    try:
-        stop_words = set(stopwords.words('english'))
-        tokens = [word for word in tokens if word not in stop_words]
-    except:
-        pass
-    
-    # Stemming
-    stemmer = PorterStemmer()
-    tokens = [stemmer.stem(word) for word in tokens]
-    
-    return ' '.join(tokens)
+        text = text_lowercase(text)
+        text = convert_number(text)
+        text = remove_numbers(text) 
+        text = remove_punctuation(text)
+        text = remove_whitespace(text)
+        text = remove_stopwords(text)
+        text = stem_words(text)
+        text = lemmatize_word(text)
+        return text
+    except Exception as e:
+        print(f"Error in preprocessing: {e}")
+        return text  # Return original text if error occurs
 
 def process_directory(input_dir, output_dir):
-    
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     
