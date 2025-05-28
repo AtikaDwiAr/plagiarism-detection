@@ -1,0 +1,2 @@
+__MACOSX/
+*.DS_Store # Juga abaikan file metadata macOS lainnya
