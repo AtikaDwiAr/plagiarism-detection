@@ -3,6 +3,7 @@ import nltk
 import re
 import ssl
 import string
+import pandas as pd
 
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords, wordnet
@@ -103,12 +104,14 @@ def preprocess_text(text):
         print(f"Error in preprocessing: {e}")
         return text
 
-# Proses direktori
-def process_directory(input_dir, output_dir):
+# Proses direktori + simpan hasil ke CSV
+def process_directory(input_dir, output_dir, csv_path):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
+    processed_data = []
     processed_count = 0
+
     for filename in os.listdir(input_dir):
         if not filename.endswith('.txt'):
             continue
@@ -125,9 +128,20 @@ def process_directory(input_dir, output_dir):
             with open(output_path, 'w', encoding='utf-8') as f:
                 f.write(processed_text)
 
+            processed_data.append({
+                "filename": filename,
+                "processed_text": processed_text
+            })
+
             processed_count += 1
         except Exception as e:
             print(f"Error processing {filename}: {e}")
+
+    # Simpan ke CSV
+    if processed_data:
+        df = pd.DataFrame(processed_data)
+        df.to_csv(csv_path, index=False)
+        print(f"CSV saved to: {csv_path}")
 
     print(f"Processed {processed_count} files from {input_dir} to {output_dir}")
 
@@ -142,9 +156,9 @@ if __name__ == "__main__":
     OUTPUT_SUSPICIOUS = 'preprocessed_data/suspicious'
 
     print("\nProcessing source documents...")
-    process_directory(SOURCE_DIR, OUTPUT_SOURCE)
+    process_directory(SOURCE_DIR, OUTPUT_SOURCE, "preprocessed_data/source_preprocessed.csv")
 
     print("\nProcessing suspicious documents...")
-    process_directory(SUSPICIOUS_DIR, OUTPUT_SUSPICIOUS)
+    process_directory(SUSPICIOUS_DIR, OUTPUT_SUSPICIOUS, "preprocessed_data/suspicious_preprocessed.csv")
 
     print("\nPreprocessing completed successfully!")
