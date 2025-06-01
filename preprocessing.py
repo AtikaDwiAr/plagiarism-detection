@@ -3,8 +3,10 @@ import nltk
 import re
 import ssl
 import string
+import csv
 import pandas as pd
 
+from langdetect import detect, LangDetectException
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords, wordnet
 from nltk.stem import WordNetLemmatizer
@@ -13,7 +15,6 @@ from nltk import pos_tag
 # Setup NLTK Auto-Installer
 def setup_nltk():
     try:
-        # SSL
         try:
             _create_unverified_https_context = ssl._create_unverified_context
         except AttributeError:
@@ -21,12 +22,10 @@ def setup_nltk():
         else:
             ssl._create_default_https_context = _create_unverified_https_context
 
-        # Path setup
         nltk_data_path = os.path.join(os.path.expanduser("~"), "nltk_data")
         os.makedirs(nltk_data_path, exist_ok=True)
         nltk.data.path.append(nltk_data_path)
 
-        # Required resources
         resources = {
             'tokenizers/punkt': 'punkt',
             'corpora/stopwords': 'stopwords',
@@ -69,7 +68,6 @@ def remove_stopwords(text):
     return ' '.join(filtered)
 
 def get_wordnet_pos(treebank_tag):
-    """Konversi tag POS Treebank ke tag WordNet"""
     if treebank_tag.startswith('J'):
         return wordnet.ADJ
     elif treebank_tag.startswith('V'):
@@ -79,7 +77,7 @@ def get_wordnet_pos(treebank_tag):
     elif treebank_tag.startswith('R'):
         return wordnet.ADV
     else:
-        return wordnet.NOUN  # default fallback
+        return wordnet.NOUN
 
 def lemmatize_word(text):
     tokens = word_tokenize(text)
@@ -89,6 +87,13 @@ def lemmatize_word(text):
         for word, pos in tagged
     ]
     return ' '.join(lemmatized)
+
+# Fungsi deteksi bahasa
+def is_english(text):
+    try:
+        return detect(text) == 'en'
+    except LangDetectException:
+        return False
 
 # Pipeline utama
 def preprocess_text(text):
@@ -104,13 +109,14 @@ def preprocess_text(text):
         print(f"Error in preprocessing: {e}")
         return text
 
-# Proses direktori + simpan hasil ke CSV
-def process_directory(input_dir, output_dir, csv_path):
+# Proses direktori
+def process_directory(input_dir, output_dir, csv_output_path):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    processed_data = []
+    rows = []
     processed_count = 0
+    skipped_count = 0
 
     for filename in os.listdir(input_dir):
         if not filename.endswith('.txt'):
@@ -123,27 +129,32 @@ def process_directory(input_dir, output_dir, csv_path):
             with open(input_path, 'r', encoding='utf-8', errors='ignore') as f:
                 raw_text = f.read()
 
+            if not is_english(raw_text):
+                print(f"Skipped non-English file: {filename}")
+                skipped_count += 1
+                continue
+
             processed_text = preprocess_text(raw_text)
 
+            # Simpan hasil ke file .txt
             with open(output_path, 'w', encoding='utf-8') as f:
                 f.write(processed_text)
 
-            processed_data.append({
-                "filename": filename,
-                "processed_text": processed_text
-            })
-
+            # Simpan hasil ke CSV list
+            rows.append([filename, processed_text])
             processed_count += 1
+
         except Exception as e:
             print(f"Error processing {filename}: {e}")
 
     # Simpan ke CSV
-    if processed_data:
-        df = pd.DataFrame(processed_data)
-        df.to_csv(csv_path, index=False)
-        print(f"CSV saved to: {csv_path}")
+    with open(csv_output_path, 'w', encoding='utf-8', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(['filename', 'preprocessed_text'])
+        writer.writerows(rows)
 
-    print(f"Processed {processed_count} files from {input_dir} to {output_dir}")
+    print(f"\nProcessed {processed_count} English files from {input_dir} to {output_dir}")
+    print(f"Skipped {skipped_count} non-English files.")
 
 # Main
 if __name__ == "__main__":
@@ -155,10 +166,13 @@ if __name__ == "__main__":
     OUTPUT_SOURCE = 'preprocessed_data/source'
     OUTPUT_SUSPICIOUS = 'preprocessed_data/suspicious'
 
+    CSV_SOURCE = 'preprocessed_data/preprocessed_source.csv'
+    CSV_SUSPICIOUS = 'preprocessed_data/preprocessed_suspicious.csv'
+
     print("\nProcessing source documents...")
-    process_directory(SOURCE_DIR, OUTPUT_SOURCE, "preprocessed_data/source_preprocessed.csv")
+    process_directory(SOURCE_DIR, OUTPUT_SOURCE, CSV_SOURCE)
 
     print("\nProcessing suspicious documents...")
-    process_directory(SUSPICIOUS_DIR, OUTPUT_SUSPICIOUS, "preprocessed_data/suspicious_preprocessed.csv")
+    process_directory(SUSPICIOUS_DIR, OUTPUT_SUSPICIOUS, CSV_SUSPICIOUS)
 
     print("\nPreprocessing completed successfully!")
