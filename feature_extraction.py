@@ -5,6 +5,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from gensim.models import Word2Vec
 from transformers import AutoTokenizer, AutoModel
 import torch
+import pandas as pd
 
 # Pastikan sudah menjalankan loaddata.py dan preprocessing.py
 # agar folder 'preprocessed_data' sudah ada
@@ -203,5 +204,34 @@ if __name__ == "__main__":
             print(f"Cosine Similarity (Word2Vec) antara dokumen mencurigakan pertama dan sumber: {w2v_cosine_sims[0][:5]} (hanya 5 pertama)")
         else:
             print("Tidak ada data Word2Vec untuk demonstrasi Cosine Similarity.")
+
+    # Save features to CSV
+    print("\nMenyimpan semua fitur ke CSV...")
+    all_docs = source_docs + suspicious_docs
+    filenames = source_filenames + suspicious_filenames
+    labels = ['source']*len(source_docs) + ['suspicious']*len(suspicious_docs)
+    # BoW features
+    bow_all = bow_vectorizer.transform(all_docs).toarray()
+    # TF-IDF features
+    tfidf_all = tfidf_vectorizer.transform(all_docs).toarray()
+    # Word2Vec features
+    tokenized_all = tokenized_source_docs + tokenized_suspicious_docs
+    w2v_all = np.array([get_document_embedding_w2v(tokens, word2vec_model) for tokens in tokenized_all])
+    # BERT features
+    bert_all = get_bert_embedding(all_docs)
+    # Build DataFrame
+    data = {'filename': filenames, 'label': labels}
+    for idx, fname in enumerate(bow_vectorizer.get_feature_names_out()):
+        data[f'bow_{fname}'] = bow_all[:, idx]
+    for idx, fname in enumerate(tfidf_vectorizer.get_feature_names_out()):
+        data[f'tfidf_{fname}'] = tfidf_all[:, idx]
+    for idx in range(w2v_all.shape[1]):
+        data[f'w2v_{idx}'] = w2v_all[:, idx]
+    if bert_all is not None:
+        for idx in range(bert_all.shape[1]):
+            data[f'bert_{idx}'] = bert_all[:, idx]
+    df = pd.DataFrame(data)
+    df.to_csv('extracted_features.csv', index=False)
+    print("Features saved to extracted_features.csv")
 
     print("\nFeature extraction selesai!")
